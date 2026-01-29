@@ -6,7 +6,7 @@
 #include "Types.h"
 #include "Card.h"
 
-static char *values[] = { "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K" };
+static char *values[] = { "", "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K" };
 static Texture2D *suitsTSmall[4];
 static Texture2D *suitsTBig[4];
 static bool initialized = false;
@@ -44,5 +44,7 @@ void drawCard( Card *c ) {
     }
 
     DrawRectangleRoundedLinesEx( (Rectangle) { c->rect.x, c->rect.y, c->rect.width, c->rect.height }, 0.2, 10, 2, BLACK );
+
+    //DrawText( TextFormat( "%p", c->belongsTo ), c->rect.x + c->rect.width + 5, c->rect.y, 20, BLACK );
 
 }

@@ -7,6 +7,7 @@
 
 static Texture2D *grayTextures[4];
 static bool initialized = false;
+static void updateDropRect( CardStack *s );
 
 void initCardStack( CardStack *s ) {
     s->top = -1;
@@ -15,11 +16,13 @@ void initCardStack( CardStack *s ) {
 void pushCardStack( CardStack *s, Card *c ) {
     if ( s->top < 52 ) {
         s->cards[++(s->top)] = c;
+        c->belongsTo = s;
     }
 }
 
 Card *popCardStack( CardStack *s ) {
     if ( s->top != -1 ) {
+        s->cards[s->top]->belongsTo = NULL;
         return s->cards[(s->top)--];
     }
     return NULL;
@@ -32,7 +35,7 @@ Card *peekCardStack( CardStack *s ) {
     return NULL;
 }
 
-void drawCardStack( CardStack *s ) {
+void drawCardStack( CardStack *s, Card *excludeFromDrawing ) {
 
     if ( !initialized ) {
         grayTextures[0] = &rm.heartsGray;
@@ -75,12 +78,14 @@ void drawCardStack( CardStack *s ) {
         case CARD_STACK_TYPE_TEMP:
             break;
     }
-    
-    
 
     for ( int i = 0; i <= s->top; i++ ) {
-        drawCard( s->cards[i] );
+        if ( s->cards[i] != excludeFromDrawing ) {
+            drawCard( s->cards[i] );
+        }
     }
+
+    //DrawRectangleLinesEx( s->dropRect, 2, ORANGE );
 
 }
 
@@ -94,6 +99,8 @@ void updateCardsPositionFromCardStack( CardStack *s, float verticalSpacing ) {
         }
     }
 
+    updateDropRect( s );
+
 }
 
 void updateCardsPositionFromCardStackAvailable( CardStack *s, float diagonalSpacing ) {
@@ -104,6 +111,8 @@ void updateCardsPositionFromCardStackAvailable( CardStack *s, float diagonalSpac
         s->cards[i]->flipped = true;
     }
 
+    updateDropRect( s );
+
 }
 
 void updateCardsPositionFromCardStackChecking( CardStack *s, float diagonalSpacing ) {
@@ -112,6 +121,44 @@ void updateCardsPositionFromCardStackChecking( CardStack *s, float diagonalSpaci
         s->cards[i]->rect.x = s->rect.x - diagonalSpacing * i;
         s->cards[i]->rect.y = s->rect.y - diagonalSpacing * i;
         s->cards[i]->flipped = false;
+    }
+
+    updateDropRect( s );
+
+}
+
+void reorganizeCardsPositionFromTempCardStack( CardStack *s, float verticalSpacing ) {
+
+    for ( int i = 0; i <= s->top; i++ ) {
+        s->cards[i]->rect.x = s->rect.x;
+        s->cards[i]->rect.y = s->rect.y + verticalSpacing * i;
+    }
+
+    updateDropRect( s );
+
+}
+
+void reorganizeCardsPositionFromStackedCardStack( CardStack *s, float diagonalSpacing ) {
+
+    for ( int i = 0; i <= s->top; i++ ) {
+        s->cards[i]->rect.x = s->rect.x - diagonalSpacing * i;
+        s->cards[i]->rect.y = s->rect.y - diagonalSpacing * i;
+    }
+
+    updateDropRect( s );
+
+}
+
+static void updateDropRect( CardStack *s ) {
+
+    s->dropRect.x = s->rect.x;
+    s->dropRect.y = s->rect.y;
+    s->dropRect.width = s->rect.width;
+
+    if ( s->top != -1 ) {
+        s->dropRect.height = s->cards[s->top]->rect.y + s->cards[s->top]->rect.height - s->rect.y;
+    } else {
+        s->dropRect.height = s->rect.height;
     }
 
 }
