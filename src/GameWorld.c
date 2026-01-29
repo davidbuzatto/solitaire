@@ -201,6 +201,7 @@ static void reorganizeAllStacks( GameWorld *gw ) {
     reorganizeCardsPositionFromTempCardStack( &gw->temp5, stackVerticalSpacing );
     reorganizeCardsPositionFromTempCardStack( &gw->temp6, stackVerticalSpacing );
     reorganizeCardsPositionFromTempCardStack( &gw->temp7, stackVerticalSpacing );
+    
 }
 
 static void prepareNewGame( GameWorld *gw ) {
