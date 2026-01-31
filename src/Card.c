@@ -48,3 +48,7 @@ void drawCard( Card *c ) {
     //DrawText( TextFormat( "%p", c->belongsTo ), c->rect.x + c->rect.width + 5, c->rect.y, 20, BLACK );
 
 }
+
+void logCard( Card *c ) {
+    TraceLog( LOG_INFO, "Value: %d, Suit: %d, Belongs: %p", c->value, c->suit, c->belongsTo );
+}

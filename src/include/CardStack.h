@@ -17,3 +17,5 @@ void updateCardsPositionFromCardStackChecking( CardStack *s, float diagonalSpaci
 
 void reorganizeCardsPositionFromTempCardStack( CardStack *s, float verticalSpacing );
 void reorganizeCardsPositionFromStackedCardStack( CardStack *s, float diagonalSpacing );
+
+void logCardStack( CardStack *s, const char *stackName );

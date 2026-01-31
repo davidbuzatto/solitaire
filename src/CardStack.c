@@ -163,3 +163,17 @@ static void updateDropRect( CardStack *s ) {
     }
 
 }
+
+void logCardStack( CardStack *s, const char *stackName ) {
+
+    TraceLog( LOG_INFO, "%s Stack Data: %p", stackName, s );
+
+    if ( s->top != -1 ) {
+        for ( int i = 0; i <= s->top; i++ ) {
+            logCard( s->cards[i] );
+        }
+    } else {
+        TraceLog( LOG_INFO, "EMPTY" );
+    }
+
+}

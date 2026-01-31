@@ -20,6 +20,9 @@
 //#include "raylib/raygui.h"       // other compilation units must only include
 //#undef RAYGUI_IMPLEMENTATION     // raygui.h
 
+#define TEST_WON false
+#define SHUFFLE true
+
 static Card *selectedCard = NULL;
 static CardStack *sourceStack = NULL;
 static CardStack *targetStack = NULL;
@@ -34,6 +37,8 @@ static bool checkCompatibilityOkStack( Card *selected, Card *target );
 static bool checkCompatibilityTempStack( Card *selected, Card *target );
 static void reorganizeAllStacks( GameWorld *gw );
 static Card *resolveSelectedCard( GameWorld *gw );
+
+static bool checkVictory( GameWorld *gw );
 
 /**
  * @brief Creates a dinamically allocated GameWorld struct instance.
@@ -60,104 +65,183 @@ void updateGameWorld( GameWorld *gw, float delta ) {
         prepareNewGame( gw );
     }
 
-    if ( IsMouseButtonPressed( MOUSE_BUTTON_LEFT ) ) {
+    if ( gw->state == GAME_STATE_PLAYING ) {
 
-        selectedCard = resolveSelectedCard( gw );
+        if ( IsMouseButtonPressed( MOUSE_BUTTON_LEFT ) ) {
 
-        if ( selectedCard == NULL ) {
+            selectedCard = resolveSelectedCard( gw );
 
-            // check and pick available cards
-            if ( CheckCollisionPointRec( GetMousePosition(), gw->available.rect ) ) {
-                if ( gw->available.top != -1 ) {
-                    Card *c = popCardStack( &gw->available );
-                    pushCardStack( &gw->checking, c );
-                    updateCardsPositionFromCardStackAvailable( &gw->available, stackDiagonalSpacing );
-                    updateCardsPositionFromCardStackChecking( &gw->checking, stackDiagonalSpacing );
-                } else {
-                    while ( gw->checking.top != -1 ) {
-                        Card *c = popCardStack( &gw->checking );
-                        pushCardStack( &gw->available, c );
+            if ( selectedCard == NULL ) {
+
+                // check and pick available cards
+                if ( CheckCollisionPointRec( GetMousePosition(), gw->available.rect ) ) {
+                    if ( gw->available.top != -1 ) {
+                        Card *c = popCardStack( &gw->available );
+                        pushCardStack( &gw->checking, c );
+                        updateCardsPositionFromCardStackAvailable( &gw->available, stackDiagonalSpacing );
+                        updateCardsPositionFromCardStackChecking( &gw->checking, stackDiagonalSpacing );
+                    } else {
+                        while ( gw->checking.top != -1 ) {
+                            Card *c = popCardStack( &gw->checking );
+                            pushCardStack( &gw->available, c );
+                        }
+                        updateCardsPositionFromCardStackAvailable( &gw->available, stackDiagonalSpacing );
+                        updateCardsPositionFromCardStackChecking( &gw->checking, stackDiagonalSpacing );
                     }
-                    updateCardsPositionFromCardStackAvailable( &gw->available, stackDiagonalSpacing );
-                    updateCardsPositionFromCardStackChecking( &gw->checking, stackDiagonalSpacing );
                 }
+
+                // flip temp stack card
+                for ( int i = 0; i < 7; i++ ) {
+                    CardStack *tempStack = gw->stacks[i+6];
+                    Card *topCard = peekCardStack( tempStack );
+                    if ( topCard != NULL && CheckCollisionPointRec( GetMousePosition(), topCard->rect ) ) {
+                        topCard->flipped = false;
+                    }
+                }
+
+            } else {
+
+                sourceStack = selectedCard->belongsTo;
+                int iFound = -1;
+
+                if ( sourceStack != NULL ) {
+                    for ( int i = 0; i <= sourceStack->top; i++ ) {
+                        if ( sourceStack->cards[i] == selectedCard ) {
+                            iFound = i;
+                            break;
+                        }
+                    }
+                    if ( iFound != -1 ) {
+                        for ( int i = iFound; i <= sourceStack->top; i++ ) {
+                            pushCardStack( &gw->transfer, sourceStack->cards[i] );
+                        }
+                        sourceStack->top = iFound - 1;
+                    }
+                }
+
             }
 
-            // flip temp stack card
-            for ( int i = 0; i < 7; i++ ) {
-                CardStack *tempStack = gw->stacks[i+6];
-                Card *topCard = peekCardStack( tempStack );
-                if ( topCard != NULL && CheckCollisionPointRec( GetMousePosition(), topCard->rect ) ) {
-                    topCard->flipped = false;
-                }
+            /*TraceLog( LOG_INFO, "***** Stacks When Pressed *****" );
+            if ( sourceStack != NULL ) {
+                logCardStack( sourceStack, "Source" );
             }
+            logCardStack( &gw->transfer, "Transfer" );*/
 
-        } else {
-            sourceStack = selectedCard->belongsTo;
         }
 
-    }
+        if ( IsMouseButtonReleased( MOUSE_BUTTON_LEFT ) ) {
 
-    if ( IsMouseButtonReleased( MOUSE_BUTTON_LEFT ) ) {
+            if ( selectedCard != NULL ) {
 
-        if ( selectedCard != NULL ) {
-
-            for ( int i = 0; i < 13; i++ ) {
-                CardStack *s = gw->stacks[i];
-                if ( CheckCollisionPointRec( GetMousePosition(), s->dropRect ) ) {
-                    targetStack = s;
-                    break;
+                for ( int i = 0; i < 13; i++ ) {
+                    CardStack *s = gw->stacks[i];
+                    if ( CheckCollisionPointRec( GetMousePosition(), s->dropRect ) ) {
+                        targetStack = s;
+                        break;
+                    }
                 }
-            }
 
-            if ( targetStack != NULL ) {
+                /*TraceLog( LOG_INFO, "***** Stacks When Released *****" );
+                if ( sourceStack != NULL ) {
+                    logCardStack( sourceStack, "Source" );
+                }
+                if ( targetStack != NULL ) {
+                    logCardStack( targetStack, "Target" );
+                }
+                logCardStack( &gw->transfer, "Transfer" );*/
 
-                if ( targetStack->type == CARD_STACK_TYPE_TEMP ) {
-                    if ( targetStack->top != -1 ) {
-                        Card *topCard = peekCardStack( targetStack );
-                        if ( checkCompatibilityTempStack( selectedCard, topCard ) ) {
-                            CardStack *selectedCS = selectedCard->belongsTo;
-                            if ( selectedCS != NULL ) { // always true
-                                popCardStack( selectedCS );
-                                pushCardStack( targetStack, selectedCard );
+                if ( targetStack != NULL && sourceStack != NULL && targetStack != sourceStack ) {
+
+                    if ( targetStack->type == CARD_STACK_TYPE_TEMP ) {
+
+                        if ( targetStack->top != -1 ) {
+                            Card *topCard = peekCardStack( targetStack );
+                            if ( checkCompatibilityTempStack( selectedCard, topCard ) ) {
+                                // TODO: this is used in many places. needs to be refactored
+                                if ( gw->transfer.top != -1 && sourceStack != NULL ) {
+                                    for ( int i = 0; i <= gw->transfer.top; i++ ) {
+                                        pushCardStack( targetStack, gw->transfer.cards[i] );
+                                    }
+                                    gw->transfer.top = -1;
+                                }
                             } else {
-                                TraceLog( LOG_ERROR, "should not be here..." );
+                                if ( gw->transfer.top != -1 && sourceStack != NULL ) {
+                                    for ( int i = 0; i <= gw->transfer.top; i++ ) {
+                                        pushCardStack( sourceStack, gw->transfer.cards[i] );
+                                    }
+                                    gw->transfer.top = -1;
+                                }
+                            }
+                        } else {
+                            if ( gw->transfer.top != -1 ) {
+                                for ( int i = 0; i <= gw->transfer.top; i++ ) {
+                                    pushCardStack( targetStack, gw->transfer.cards[i] );
+                                }
+                                gw->transfer.top = -1;
+                            }
+                        }
+                    } else if ( ( ( selectedCard->suit == SUIT_H && targetStack->type == CARD_STACK_TYPE_OK_H ) || 
+                                ( selectedCard->suit == SUIT_D && targetStack->type == CARD_STACK_TYPE_OK_D ) || 
+                                ( selectedCard->suit == SUIT_C && targetStack->type == CARD_STACK_TYPE_OK_C ) || 
+                                ( selectedCard->suit == SUIT_S && targetStack->type == CARD_STACK_TYPE_OK_S ) ) && gw->transfer.top == 0 ) {
+                        if ( targetStack->top == -1 ) {
+                            if ( gw->transfer.top != -1 ) {
+                                for ( int i = 0; i <= gw->transfer.top; i++ ) {
+                                    pushCardStack( targetStack, gw->transfer.cards[i] );
+                                }
+                                gw->transfer.top = -1;
+                            }
+                        } else if ( checkCompatibilityOkStack( selectedCard, peekCardStack( targetStack ) ) ) {
+                            if ( gw->transfer.top != -1 && sourceStack != NULL ) {
+                                for ( int i = 0; i <= gw->transfer.top; i++ ) {
+                                    pushCardStack( targetStack, gw->transfer.cards[i] );
+                                }
+                                gw->transfer.top = -1;
+                            }
+                        } else {
+                            if ( gw->transfer.top != -1 && sourceStack != NULL ) {
+                                for ( int i = 0; i <= gw->transfer.top; i++ ) {
+                                    pushCardStack( sourceStack, gw->transfer.cards[i] );
+                                }
+                                gw->transfer.top = -1;
                             }
                         }
                     } else {
-                        CardStack *selectedCS = selectedCard->belongsTo;
-                        if ( selectedCS != NULL ) { // always true
-                            popCardStack( selectedCS );
-                            pushCardStack( targetStack, selectedCard );
-                        } else {
-                            TraceLog( LOG_ERROR, "should not be here..." );
+                        if ( gw->transfer.top != -1 && sourceStack != NULL ) {
+                            for ( int i = 0; i <= gw->transfer.top; i++ ) {
+                                pushCardStack( sourceStack, gw->transfer.cards[i] );
+                            }
+                            gw->transfer.top = -1;
                         }
                     }
-                } else if ( ( selectedCard->suit == SUIT_H && targetStack->type == CARD_STACK_TYPE_OK_H ) || 
-                            ( selectedCard->suit == SUIT_D && targetStack->type == CARD_STACK_TYPE_OK_D ) || 
-                            ( selectedCard->suit == SUIT_C && targetStack->type == CARD_STACK_TYPE_OK_C ) || 
-                            ( selectedCard->suit == SUIT_S && targetStack->type == CARD_STACK_TYPE_OK_S ) ) {
-                    CardStack *selectedCS = selectedCard->belongsTo;
-                    if ( targetStack->top == -1 || checkCompatibilityOkStack( selectedCard, peekCardStack( targetStack ) ) ) {
-                        popCardStack( selectedCS );
-                        pushCardStack( targetStack, selectedCard );
+
+                } else {
+                    if ( gw->transfer.top != -1 && sourceStack != NULL ) {
+                        for ( int i = 0; i <= gw->transfer.top; i++ ) {
+                            pushCardStack( sourceStack, gw->transfer.cards[i] );
+                        }
+                        gw->transfer.top = -1;
                     }
                 }
 
             }
 
+            selectedCard = NULL;
+            sourceStack = NULL;
+            targetStack = NULL;
+            reorganizeAllStacks( gw );
+
         }
 
-        selectedCard = NULL;
-        sourceStack = NULL;
-        targetStack = NULL;
-        reorganizeAllStacks( gw );
+        if ( selectedCard != NULL ) {
+            selectedCard->rect.x = GetMouseX() - pressOffset.x;
+            selectedCard->rect.y = GetMouseY() - pressOffset.y;
+        }
 
-    }
+        if ( checkVictory( gw ) ) {
+            gw->state = GAME_STATE_WON;
+        }
 
-    if ( selectedCard != NULL ) {
-        selectedCard->rect.x = GetMouseX() - pressOffset.x;
-        selectedCard->rect.y = GetMouseY() - pressOffset.y;
     }
 
 }
@@ -175,8 +259,21 @@ void drawGameWorld( GameWorld *gw ) {
         drawCardStack( s, selectedCard );
     }
 
-    if ( selectedCard != NULL ) {
-        drawCard( selectedCard );
+    if ( gw->transfer.top != -1 ) {
+        Rectangle *r = &gw->transfer.cards[0]->rect;
+        for ( int i = 1; i <= gw->transfer.top; i++ ) {
+            gw->transfer.cards[i]->rect.x = r->x;
+            gw->transfer.cards[i]->rect.y = r->y + stackVerticalSpacing * i;
+        }
+        drawCardStack( &gw->transfer, NULL );
+    }
+
+    if ( gw->state == GAME_STATE_WON ) {
+        DrawRectangle( 0, 0, GetScreenWidth(), GetScreenHeight(), Fade( BLACK, 0.8 ) );
+        const char *winMsg = "You Win!";
+        const char *restartMsg = "Press <R> to Restart!";
+        DrawText( winMsg, GetScreenWidth() / 2 - MeasureText( winMsg, 50 ) / 2, GetScreenHeight() / 2 - 25, 50, BLUE );
+        DrawText( restartMsg, GetScreenWidth() / 2 - MeasureText( restartMsg, 20 ) / 2, GetScreenHeight() / 2 + 30, 20, GREEN );
     }
 
     EndDrawing();
@@ -215,6 +312,8 @@ static void prepareNewGame( GameWorld *gw ) {
     selectedCard = NULL;
     sourceStack = NULL;
     targetStack = NULL;
+
+    gw->state = GAME_STATE_PLAYING;
 
     Suit suits[] = { SUIT_H, SUIT_D, SUIT_C, SUIT_S };
     SuitColor suitsColor[] = { SUIT_COLOR_RED, SUIT_COLOR_RED, SUIT_COLOR_BLACK, SUIT_COLOR_BLACK };
@@ -263,15 +362,35 @@ static void prepareNewGame( GameWorld *gw ) {
 
     int counts[] = { 1, 2, 3, 4, 5, 6, 7 };
     int k = 0;
-
-    for ( int i = 0; i < 7; i++ ) {
-        for ( int j = 0; j < counts[i]; j++ ) {
-            pushCardStack( gw->stacks[i+6], &gw->deck.cards[k++] );
+    
+    if ( TEST_WON ) {
+        for ( int i = 2; i <= 5; i++ ) {
+            for ( int j = 0; j < 13; j++ ) {
+                if ( i == 5 && j == 12 ) {
+                    break;
+                }
+                pushCardStack( gw->stacks[i], &gw->deck.cards[k++] );
+            }
         }
-    }
+        pushCardStack( gw->stacks[12], &gw->deck.cards[k++] );
+    } else {
+        if ( SHUFFLE ) {
+            for ( int i = 0; i < 52; i++ ) {
+                int pos = GetRandomValue( 0, 51 );
+                Card t = gw->deck.cards[i];
+                gw->deck.cards[i] = gw->deck.cards[pos];
+                gw->deck.cards[pos] = t;
+            }
+        }
+        for ( int i = 0; i < 7; i++ ) {
+            for ( int j = 0; j < counts[i]; j++ ) {
+                pushCardStack( gw->stacks[i+6], &gw->deck.cards[k++] );
+            }
+        }
 
-    for ( ; k < 52; k++ ) {
-        pushCardStack( &gw->available, &gw->deck.cards[k] );
+        for ( ; k < 52; k++ ) {
+            pushCardStack( &gw->available, &gw->deck.cards[k] );
+        }
     }
 
     int topMargin = 30;
@@ -330,4 +449,8 @@ static Card *resolveSelectedCard( GameWorld *gw ) {
 
     return NULL;
 
+}
+
+static bool checkVictory( GameWorld *gw ) {
+    return gw->okHearts.top == 12 && gw->okDiamonds.top == 12 && gw->okClub.top == 12 && gw->okSpades.top == 12;
 }

@@ -6,6 +6,11 @@
 typedef struct Card Card;
 typedef struct CardStack CardStack;
 
+typedef enum GameState {
+    GAME_STATE_PLAYING,
+    GAME_STATE_WON
+} GameState;
+
 typedef enum Suit {
     SUIT_H, // hearts
     SUIT_D, // diamonds
@@ -73,5 +78,7 @@ typedef struct GameWorld {
     CardStack temp7;
 
     CardStack *stacks[14];
+
+    GameState state;
 
 } GameWorld;
