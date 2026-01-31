@@ -63,6 +63,7 @@ void drawCardStack( CardStack *s, Card *excludeFromDrawing ) {
             );
             break;
         case CARD_STACK_TYPE_CHECKING:
+        case CARD_STACK_TYPE_TRANSFER:
             break;
         case CARD_STACK_TYPE_OK_H:
         case CARD_STACK_TYPE_OK_D:

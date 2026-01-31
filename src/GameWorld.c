@@ -65,6 +65,7 @@ void updateGameWorld( GameWorld *gw, float delta ) {
 
         if ( selectedCard == NULL ) {
 
+            // check and pick available cards
             if ( CheckCollisionPointRec( GetMousePosition(), gw->available.rect ) ) {
                 if ( gw->available.top != -1 ) {
                     Card *c = popCardStack( &gw->available );
@@ -81,6 +82,7 @@ void updateGameWorld( GameWorld *gw, float delta ) {
                 }
             }
 
+            // flip temp stack card
             for ( int i = 0; i < 7; i++ ) {
                 CardStack *tempStack = gw->stacks[i+6];
                 Card *topCard = peekCardStack( tempStack );
@@ -244,13 +246,15 @@ static void prepareNewGame( GameWorld *gw ) {
     gw->stacks[10] = &gw->temp5;
     gw->stacks[11] = &gw->temp6;
     gw->stacks[12] = &gw->temp7;
+    gw->stacks[13] = &gw->transfer;
 
-    for ( int i = 0; i < 13; i++ ) {
+    for ( int i = 0; i < 14; i++ ) {
         initCardStack( gw->stacks[i] );
     }
 
     gw->available.type = CARD_STACK_TYPE_AVAILABLE;
     gw->checking.type = CARD_STACK_TYPE_CHECKING;
+    gw->transfer.type = CARD_STACK_TYPE_TRANSFER;
 
     int counts[] = { 1, 2, 3, 4, 5, 6, 7 };
     int k = 0;

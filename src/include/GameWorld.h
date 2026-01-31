@@ -10,30 +10,6 @@
 #include "Types.h"
 #include "Deck.h"
 
-typedef struct GameWorld {
-
-    Deck deck;
-
-    CardStack available;
-    CardStack checking;
-
-    CardStack okHearts;
-    CardStack okDiamonds;
-    CardStack okClub;
-    CardStack okSpades;
-
-    CardStack temp1;
-    CardStack temp2;
-    CardStack temp3;
-    CardStack temp4;
-    CardStack temp5;
-    CardStack temp6;
-    CardStack temp7;
-
-    CardStack *stacks[13];
-
-} GameWorld;
-
 /**
  * @brief Creates a dinamically allocated GameWorld struct instance.
  */
