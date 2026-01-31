@@ -21,6 +21,7 @@
 //#undef RAYGUI_IMPLEMENTATION     // raygui.h
 
 static Card *selectedCard = NULL;
+static CardStack *sourceStack = NULL;
 static CardStack *targetStack = NULL;
 static Vector2 pressOffset;
 
@@ -91,6 +92,8 @@ void updateGameWorld( GameWorld *gw, float delta ) {
                 }
             }
 
+        } else {
+            sourceStack = selectedCard->belongsTo;
         }
 
     }
@@ -146,6 +149,7 @@ void updateGameWorld( GameWorld *gw, float delta ) {
         }
 
         selectedCard = NULL;
+        sourceStack = NULL;
         targetStack = NULL;
         reorganizeAllStacks( gw );
 
@@ -209,6 +213,7 @@ static void reorganizeAllStacks( GameWorld *gw ) {
 static void prepareNewGame( GameWorld *gw ) {
 
     selectedCard = NULL;
+    sourceStack = NULL;
     targetStack = NULL;
 
     Suit suits[] = { SUIT_H, SUIT_D, SUIT_C, SUIT_S };
